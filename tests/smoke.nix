@@ -1,11 +1,18 @@
 {
-  pkgs ? import <nixpkgs> { },
+  lib,
+  runCommand,
+  keil-uvision,
 }:
-pkgs.stdenv.mkDerivation {
-  name = "keil-uvision-smoke-test";
-  dontUnpack = true;
-  installPhase = ''
-    mkdir -p $out
-    echo "true" > $out/success
-  '';
-}
+runCommand "keil-uvision-smoke-test"
+  {
+    nativeBuildInputs = [ keil-uvision ];
+  }
+  ''
+    if [ ! -x "$(command -v keil-uvision)" ]; then
+      echo "FAIL: keil-uvision not found in PATH"
+      exit 1
+    fi
+    echo "PASS: keil-uvision wrapper is present and executable"
+    mkdir -p "$out"
+    echo "true" > "$out/success"
+  ''
