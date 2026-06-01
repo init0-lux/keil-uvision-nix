@@ -16,7 +16,7 @@ stdenv.mkDerivation {
   installer = requireFile {
     name = "mdk538a.exe";
     url = "https://www.keil.com/demo/eval/arm.htm";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    hash = lib.fakeHash;
   };
 
   nativeBuildInputs = [

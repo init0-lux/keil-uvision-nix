@@ -15,7 +15,7 @@ stdenv.mkDerivation {
   installer = requireFile {
     name = "c51v961.exe";
     url = "https://www.keil.com/demo/eval/c51.htm";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    hash = lib.fakeHash;
   };
 
   nativeBuildInputs = [
