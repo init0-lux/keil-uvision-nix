@@ -1,10 +1,12 @@
-{ aria2
-, wineWow64Packages
-, writeShellScriptBin
+{
+  aria2,
+  wineWow64Packages,
+  writeShellScriptBin,
 }:
 let
   url = "https://www.keil.com/fid/z997v087b2y7w4m2o1w2w8k897r5v0v4v822y1/files/eval/mdk538a.exe";
-in writeShellScriptBin "keil-uvision" ''
+in
+writeShellScriptBin "keil-uvision" ''
   export WINEPREFIX="''${WINEPREFIX:-$HOME/.keil_prefix}"
   export WINEDLLOVERRIDES="mscoree,mshtml="
 
@@ -26,5 +28,3 @@ in writeShellScriptBin "keil-uvision" ''
     ${wineWow64Packages.stable}/bin/wine "C:\\Keil_v5\\UV4\\UV4.exe" "$@"
   fi
 ''
-
-
