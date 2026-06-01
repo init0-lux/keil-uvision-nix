@@ -1,30 +1,84 @@
 {
-  aria2,
+  lib,
+  requireFile,
+  runCommand,
+  stdenv,
+  which,
   wineWow64Packages,
-  writeShellScriptBin,
 }:
 let
-  url = "https://www.keil.com/fid/z997v087b2y7w4m2o1w2w8k897r5v0v4v822y1/files/eval/mdk538a.exe";
+  version = "5.38a";
 in
-writeShellScriptBin "keil-uvision" ''
-  export WINEPREFIX="''${WINEPREFIX:-$HOME/.keil_prefix}"
-  export WINEDLLOVERRIDES="mscoree,mshtml="
+stdenv.mkDerivation {
+  pname = "keil-uvision";
+  inherit version;
 
-  if [ ! -f "$WINEPREFIX/drive_c/Keil_v5/UV4/UV4.exe" ]; then
-    LOCAL_INSTALLER="$(pwd)/mdk538a.exe"
-    TMP_INSTALLER="/tmp/mdk538a.exe"
-    
-    if [ -f "$LOCAL_INSTALLER" ]; then
-      INSTALLER="$LOCAL_INSTALLER"
-    elif [ -f "$TMP_INSTALLER" ]; then
-      INSTALLER="$TMP_INSTALLER"
-    else
-      ${aria2}/bin/aria2c -x 16 -s 16 -k 1M -o mdk538a.exe -d /tmp "${url}"
-      INSTALLER="$TMP_INSTALLER"
+  installer = requireFile {
+    name = "mdk538a.exe";
+    url = "https://www.keil.com/demo/eval/arm.htm";
+    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  };
+
+  nativeBuildInputs = [
+    which
+    wineWow64Packages.stable
+  ];
+
+  dontUnpack = true;
+
+  buildPhase = ''
+    runHook preBuild
+
+    export WINEPREFIX="$PWD/.wine"
+    export WINEDLLOVERRIDES="mscoree,mshtml="
+    export WINEARCH="win32"
+
+    wineboot --init
+    ${wineWow64Packages.stable}/bin/wine "$installer" /quiet
+
+    runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+
+    target="$out/opt/keil-uvision"
+    mkdir -p "$target"
+
+    cp -r "$WINEPREFIX/drive_c/Keil_v5" "$target/"
+    mkdir -p "$out/bin"
+
+    cat > "$out/bin/keil-uvision" <<'WRAPPER'
+    #!/bin/sh
+    export WINEPREFIX="''${WINEPREFIX:-$HOME/.keil_prefix}"
+    export WINEDLLOVERRIDES="mscoree,mshtml="
+    if [ ! -f "$WINEPREFIX/drive_c/Keil_v5/UV4/UV4.exe" ]; then
+      mkdir -p "$(dirname "$WINEPREFIX/drive_c/Keil_v5")"
+      cp -r @out@/opt/keil-uvision/Keil_v5 "$WINEPREFIX/drive_c/Keil_v5"
     fi
-    
-    ${wineWow64Packages.stable}/bin/wine "$INSTALLER"
-  else
-    ${wineWow64Packages.stable}/bin/wine "C:\\Keil_v5\\UV4\\UV4.exe" "$@"
-  fi
-''
+    exec ${wineWow64Packages.stable}/bin/wine "C:\\Keil_v5\\UV4\\UV4.exe" "$@"
+    WRAPPER
+
+    substituteInPlace "$out/bin/keil-uvision" \
+      --subst-var-by out "$out"
+
+    chmod +x "$out/bin/keil-uvision"
+
+    runHook postInstall
+  '';
+
+  preferLocalBuild = true;
+
+  meta = with lib; {
+    description = "Keil MDK µVision 5 IDE for ARM embedded development";
+    homepage = "https://www.keil.com/demo/eval/arm.htm";
+    license = licenses.unfree;
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
+    maintainers = [ ];
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
+    mainProgram = "keil-uvision";
+  };
+}
