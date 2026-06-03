@@ -1,0 +1,71 @@
+name: Version Check
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scrape Keil MDK version
+        id: mdk
+        run: |
+          HTML="$(curl -sSL 'https://www.keil.com/demo/eval/arm.htm')"
+          LATEST="$(echo "$HTML" | grep -oP 'MDK-ARM\s+Version\s+\K[\d.]+[a-z]?' | head -1)"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+      - name: Scrape Keil C51 version
+        id: c51
+        run: |
+          HTML="$(curl -sSL 'https://www.keil.com/demo/eval/c51.htm')"
+          LATEST="$(echo "$HTML" | grep -oP 'Version\s+\K[\d.]+' | head -1)"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+      - name: Read pinned versions
+        id: pinned
+        run: |
+          MDK="$(grep -oP 'version\s*=\s*"\K[^"]+' pkgs/keil-uvision.nix)"
+          C51="$(grep -oP 'version\s*=\s*"\K[^"]+' pkgs/keil-c51.nix)"
+          echo "mdk=$MDK" >> "$GITHUB_OUTPUT"
+          echo "c51=$C51" >> "$GITHUB_OUTPUT"
+
+      - name: Open issue if versions changed
+        if: |
+          steps.mdk.outputs.latest != steps.pinned.outputs.mdk ||
+          steps.c51.outputs.latest != steps.pinned.outputs.c51
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const mdkLatest = "${{ steps.mdk.outputs.latest }}";
+            const mdkPinned = "${{ steps.pinned.outputs.mdk }}";
+            const c51Latest = "${{ steps.c51.outputs.latest }}";
+            const c51Pinned = "${{ steps.pinned.outputs.c51 }}";
+
+            let body = "New Keil versions detected:\n\n";
+            if (mdkLatest && mdkLatest !== mdkPinned) {
+              body += `- **MDK**: ${mdkPinned} → \`${mdkLatest}\`\n`;
+            }
+            if (c51Latest && c51Latest !== c51Pinned) {
+              body += `- **C51**: ${c51Pinned} → \`${c51Latest}\`\n`;
+            }
+
+            const title = "chore: new Keil version available";
+            const { data: issues } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open ${title}`,
+            });
+
+            if (issues.total_count === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["update"],
+              });
+            }
