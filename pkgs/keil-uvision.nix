@@ -7,14 +7,14 @@
   wineWow64Packages,
 }:
 let
-  version = "5.38a";
+  version = "5.43a";
 in
 stdenv.mkDerivation {
   pname = "keil-uvision";
   inherit version;
 
   installer = requireFile {
-    name = "mdk538a.exe";
+    name = "mdk543a.exe";
     url = "https://www.keil.com/demo/eval/arm.htm";
     hash = lib.fakeHash;
   };

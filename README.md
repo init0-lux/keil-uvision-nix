@@ -15,7 +15,7 @@ This project provides a Nix flake to install and run Keil µVision in an isolate
 Because Keil software is proprietary, installers cannot be downloaded automatically. Use `nix-prefetch-url` to add them to the Nix store before building:
 
 ```bash
-nix-prefetch-url --type sha256 file:///path/to/mdk538a.exe
+nix-prefetch-url --type sha256 file:///path/to/mdk543a.exe
 nix-prefetch-url --type sha256 file:///path/to/c51v961.exe
 ```
 
